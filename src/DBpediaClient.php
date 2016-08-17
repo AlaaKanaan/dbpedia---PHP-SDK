@@ -28,12 +28,12 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
     }
 
 
-    public function validateEntities($entities, $type)
+    public function validateEntities($entities, $type, $matching_type = 'exact')
     {
         if (!in_array($type, $this->types)) {
             throw new \Exception("invalid type:" . $type);
         }
-        $query = $this->getSparqelFilterQuery($entities, $type);
+        $query = $this->getSparqelFilterQuery($entities, $type, $matching_type);
         $result = $this->sparql_query($query);
 
         $response = [];
