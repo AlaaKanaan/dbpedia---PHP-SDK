@@ -18,21 +18,27 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
 
     private $end_point = "http://dbpedia.org/sparql";
     private $connection;
+    private $types;
 
     public function __construct()
     {
         $this->connection = new sparqlConnection($this->end_point);
+
+        $this->types = ['company', 'provinceorstate', 'organization'];
     }
 
 
-    public function validateEntities($entities,$type)
+    public function validateEntities($entities, $type)
     {
-        $query =  $this->getSparqelFilterQuery($entities,$type);
+        if (!in_array($type, $this->types)) {
+            throw new \Exception("invalid type:" . $type);
+        }
+        $query = $this->getSparqelFilterQuery($entities, $type);
         $result = $this->sparql_query($query);
 
-        $response=[];
+        $response = [];
         while ($row = $this->sparql_fetch_array($result)) {
-            $response[]=$row;
+            $response[] = $row;
         }
 
         return $response;
