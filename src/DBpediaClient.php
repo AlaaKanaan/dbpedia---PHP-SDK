@@ -3,7 +3,7 @@
 namespace DBpediaClient;
 
 
-use lib\sparql_lib\sparqlConnection;
+use DBpediaClient\sparql_lib\sparqlConnection;
 
 /**
  * Class DBpediaClient

@@ -1,7 +1,7 @@
 <?php
 
 
-namespace lib\sparql_lib;
+namespace DBpediaClient\sparql_lib;
 
 /**
  * Created by PhpStorm.

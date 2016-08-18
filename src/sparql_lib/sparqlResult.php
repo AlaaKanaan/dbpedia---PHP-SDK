@@ -6,7 +6,7 @@
  * Time: 4:58 PM
  */
 
-namespace lib\sparql_lib;
+namespace DBpediaClient\sparql_lib;
 
 class sparqlResult
 {
