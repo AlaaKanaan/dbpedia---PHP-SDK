@@ -124,7 +124,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
         foreach ($entities as $entity) {
             $filters .= 'regex(?label,"';
             if ($matching_type == 'exact') {
-                $entity = str_replace('(', '', $entity['value']);
+                $entity = str_replace('(', '', $entity);
                 $entity = str_replace(')', '', $entity);
 
                 $filters .= '^' . $entity . '$';
