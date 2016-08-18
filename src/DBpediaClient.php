@@ -40,16 +40,30 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
         return $responseArray;
     }
 
+    public function getFields($response)
+    {
+        if (!isset($response['head']['vars'])) {
+            return false;
+        }
+
+        return $response['head']['vars'];
+    }
+
     public function fetchArray($response)
     {
+
         $array = [];
         if (isset($response['results']['bindings'])) {
-            foreach ($response['results']['bindings'] as $row)
-                $array[] = $row;
+            foreach ($response['results']['bindings'] as $row) {
+                if (isset($row['country_name'])) {
+                    $array[$row['country_name']['value']][] =$row['label']['value'];
+                } else {
+                    $array[] = $row['label']['value'];
+                }
+            }
         } else {
             throw new \Exception("invalid data:");
         }
-
         return $array;
     }
 
@@ -99,15 +113,16 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
         $filters = '';
         foreach ($entities as $entity) {
             $filters .= 'regex(?label,"';
+            if ($access_key && isset($entity[$access_key])) {
+                $entity = str_replace('(', '', $entity[$access_key]);
+            } else {
+                $entity = str_replace('(', '', $entity);
+            }
+            $entity = str_replace(')', '', $entity);
             if ($matching_type == 'exact') {
-                if ($access_key && isset($entity[$access_key])) {
-                    $entity = str_replace('(', '', $entity[$access_key]);
-                } else {
-                    $entity = str_replace('(', '', $entity);
-                }
-                $entity = str_replace(')', '', $entity);
-
                 $filters .= '^' . $entity . '$';
+            }elseif($matching_type == 'partial'){
+                $filters .= $entity;
             }
             $filters .= '",\'i\') ||';
         }
@@ -117,7 +132,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
 
         switch ($entity_type) {
             case 'provinceorstate':
-                return $query = self::sparql_query_prefix . " SELECT DISTINCT  *
+                return $query = self::sparql_query_prefix . " SELECT DISTINCT  ?label ?country_name
 WHERE {
   {
     ?city rdf:type dbo:City ;
@@ -142,7 +157,7 @@ WHERE {
             case 'company':
 
                 return self::sparql_query_prefix . "
-                     select DISTINCT *
+                     select DISTINCT ?label
 where {
                     ?q a dbo:Company .
   ?q dbp:name ?name.
@@ -153,7 +168,7 @@ where {
                 break;
             case 'organization':
                 return self::sparql_query_prefix . "
-                    select DISTINCT  *
+                    select DISTINCT  ?label
 where {
                     ?q a dbo:Organisation .
   ?q dbp:name ?name.
