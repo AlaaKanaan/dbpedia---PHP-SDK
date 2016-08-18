@@ -74,7 +74,7 @@ class sparqlConnection
             $this->error = $parser->error();
             return;
         }
-        return new sparql_result($this, $parser->rows, $parser->fields);
+        return new sparqlResult($this, $parser->rows, $parser->fields);
     }
 
     function alive($timeout = 3)
