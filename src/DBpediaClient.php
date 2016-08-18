@@ -2,9 +2,6 @@
 
 namespace DBpediaClient;
 
-
-use DBpediaClient\sparql_lib\sparqlConnection;
-
 /**
  * Class DBpediaClient
  * @package DBpediaClient
@@ -17,106 +14,85 @@ PREFIX dbo: <http://dbpedia.org/ontology/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
 
     private $end_point = "http://dbpedia.org/sparql";
-    private $connection;
-    private $types;
 
-    public function __construct()
+
+    public function validateEntities($entities, $type = null, $access_key = false, $matching_type = 'exact')
     {
-        $this->connection = new sparqlConnection($this->end_point);
-
-        $this->types = ['company', 'provinceorstate', 'organization'];
-    }
-
-
-    public function validateEntities($entities, $type, $matching_type = 'exact')
-    {
-        if (!in_array($type, $this->types)) {
+        if (!$type) {
             throw new \Exception("invalid type:" . $type);
         }
-        $query = $this->getSparqelFilterQuery($entities, $type, $matching_type);
-        $result = $this->sparql_query($query);
+        $query = $this->getSparqelFilterQuery($entities, $type, $access_key, $matching_type);
+        $format = 'json';
 
-        $response = [];
-        while ($row = $this->sparql_fetch_array($result)) {
-            $response[] = $row;
+
+        $searchUrl = $this->end_point . '?'
+            . 'query=' . urlencode($query)
+            . '&format=' . $format;
+
+        $responseArray = json_decode(
+            $this->request($searchUrl),
+            true);
+
+        if (isset($responseArray['results']['bindings']) && !count($responseArray['results']['bindings'])) {
+            return false;
         }
+
+        return $responseArray;
+    }
+
+    public function fetchArray($response)
+    {
+        $array = [];
+        if (isset($response['results']['bindings'])) {
+            foreach ($response['results']['bindings'] as $row)
+                $array[] = $row;
+        } else {
+            throw new \Exception("invalid data:");
+        }
+
+        return $array;
+    }
+
+    function request($url)
+    {
+
+        // is curl installed?
+        if (!function_exists('curl_init')) {
+            die('CURL is not installed!');
+        }
+
+        // get curl handle
+        $ch = curl_init();
+
+
+        // set request url
+        curl_setopt($ch,
+            CURLOPT_URL,
+            $url);
+
+        // return response, don't print/echo
+        curl_setopt($ch,
+            CURLOPT_RETURNTRANSFER,
+            true);
+
+        /*
+        Here you find more options for curl:
+        http://www.php.net/curl_setopt
+        */
+
+        $response = curl_exec($ch);
+        $curl_errno = curl_errno($ch);
+
+        if ($curl_errno > 0) {
+            $this->request($url);
+        }
+
+        curl_close($ch);
 
         return $response;
     }
 
-    private function sparql_ns($short, $long, $db = null)
-    {
-        return $this->_sparql_a_connection($db)->ns($short, $long);
-    }
-
-    private function sparql_query($sparql, $db = null)
-    {
-        return $this->_sparql_a_connection($db)->query($sparql);
-    }
-
-    private function sparql_errno($db = null)
-    {
-        return $this->_sparql_a_connection($db)->errno();
-    }
-
-    private function sparql_error($db = null)
-    {
-        return $this->_sparql_a_connection($db)->error();
-    }
-
-    private function sparql_fetch_array($result)
-    {
-        return $result->fetch_array();
-    }
-
-    private function sparql_num_rows($result)
-    {
-        return $result->num_rows();
-    }
-
-    private function sparql_field_array($result)
-    {
-        return $result->field_array();
-    }
-
-    private function sparql_field_name($result, $i)
-    {
-        return $result->field_name($i);
-    }
-
-    private function sparql_fetch_all($result)
-    {
-        return $result->fetch_all();
-    }
-
-    private function sparql_get($endpoint, $sparql)
-    {
-        $db = $this->sparql_connect($endpoint);
-        if (!$db) {
-            return;
-        }
-        $result = $db->query($sparql);
-        if (!$result) {
-            return;
-        }
-        return $result->fetch_all();
-    }
-
-    private function _sparql_a_connection($db)
-    {
-        global $sparql_last_connection;
-        if (!isset($db)) {
-            if (!isset($sparql_last_connection)) {
-                print("No currect SPARQL connection (connection) in play!");
-                return;
-            }
-            $db = $sparql_last_connection;
-        }
-        return $db;
-    }
-
-
-    public function getSparqelFilterQuery($entities, $entity_type, $matching_type = 'exact', $filters_query = null)
+    public function getSparqelFilterQuery($entities, $entity_type, $access_key = false, $matching_type = 'exact', $filters_query = null)
     {
         $filters_query .= 'FILTER(';
 
@@ -124,7 +100,11 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
         foreach ($entities as $entity) {
             $filters .= 'regex(?label,"';
             if ($matching_type == 'exact') {
-                $entity = str_replace('(', '', $entity);
+                if ($access_key && isset($entity[$access_key])) {
+                    $entity = str_replace('(', '', $entity[$access_key]);
+                } else {
+                    $entity = str_replace('(', '', $entity);
+                }
                 $entity = str_replace(')', '', $entity);
 
                 $filters .= '^' . $entity . '$';
@@ -137,7 +117,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>';
 
         switch ($entity_type) {
             case 'provinceorstate':
-                return $query = self::sparql_query_prefix . " SELECT DISTINCT ?label ?country_name
+                return $query = self::sparql_query_prefix . " SELECT DISTINCT  *
 WHERE {
   {
     ?city rdf:type dbo:City ;
@@ -162,7 +142,7 @@ WHERE {
             case 'company':
 
                 return self::sparql_query_prefix . "
-                     select DISTINCT ?country_name ?label
+                     select DISTINCT *
 where {
                     ?q a dbo:Company .
   ?q dbp:name ?name.
@@ -173,7 +153,7 @@ where {
                 break;
             case 'organization':
                 return self::sparql_query_prefix . "
-                    select DISTINCT ?label
+                    select DISTINCT  *
 where {
                     ?q a dbo:Organisation .
   ?q dbp:name ?name.
@@ -185,8 +165,10 @@ where {
     }";
                 break;
 
+            default:
+                throw new \Exception("invalid type:" . $entity_type);
+                break;
+
         }
     }
-
-
 }
