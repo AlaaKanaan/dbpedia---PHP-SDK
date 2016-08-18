@@ -43,7 +43,7 @@ class sparqlResult
 
     function fetch_all()
     {
-        $r = new sparql_results();
+        $r = new sparqlResult();
         $r->fields = $this->fields;
         foreach ($this->rows as $i => $row) {
             $r [] = $this->fetch_array();

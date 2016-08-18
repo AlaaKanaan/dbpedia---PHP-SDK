@@ -25,6 +25,8 @@ class xx_xml
     var $path;
     var $looks_legit = false;
     var $error;
+    var $rows;
+    var $fields;
 
     // either you pass url atau contents.
     // Use 'url' or 'contents' for the parameter
